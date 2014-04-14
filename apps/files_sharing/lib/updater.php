@@ -27,35 +27,6 @@ class Shared_Updater {
 	static private $toRemove = array();
 
 	/**
-	* Correct the parent folders' ETags for all users shared the file at $target
-	*
-	* @param string $target
-	*/
-	static public function correctFolders($target) {
-		$uid = \OCP\User::getUser();
-		$uidOwner = \OC\Files\Filesystem::getOwner($target);
-		$info = \OC\Files\Filesystem::getFileInfo($target);
-		$checkedUser = array($uidOwner);
-		// Correct Shared folders of other users shared with
-		$users = \OCP\Share::getUsersItemShared('file', $info['fileid'], $uidOwner, true);
-		if (!empty($users)) {
-			while (!empty($users)) {
-				$reshareUsers = array();
-				foreach ($users as $user) {
-					if ( !in_array($user, $checkedUser) ) {
-						$etag = \OC\Files\Filesystem::getETag('');
-						\OCP\Config::setUserValue($user, 'files_sharing', 'etag', $etag);
-						// Look for reshares
-						$reshareUsers = array_merge($reshareUsers, \OCP\Share::getUsersItemShared('file', $info['fileid'], $user, true));
-						$checkedUser[] = $user;
-					}
-				}
-				$users = $reshareUsers;
-			}
-		}
-	}
-
-	/**
 	 * @brief remove all shares for a given file if the file was deleted
 	 *
 	 * @param string $path
@@ -77,23 +48,7 @@ class Shared_Updater {
 	/**
 	 * @param array $params
 	 */
-	static public function writeHook($params) {
-		self::correctFolders($params['path']);
-	}
-
-	/**
-	 * @param array $params
-	 */
-	static public function renameHook($params) {
-		self::correctFolders($params['newpath']);
-		self::correctFolders(pathinfo($params['oldpath'], PATHINFO_DIRNAME));
-	}
-
-	/**
-	 * @param array $params
-	 */
 	static public function deleteHook($params) {
-		self::correctFolders($params['path']);
 		$fileInfo = \OC\Files\Filesystem::getFileInfo($params['path']);
 		// mark file as deleted so that we can clean up the share table if
 		// the file was deleted successfully
@@ -123,8 +78,6 @@ class Shared_Updater {
 					$reshareUsers = array();
 					foreach ($users as $user) {
 						if ($user !== $uidOwner) {
-							$etag = \OC\Files\Filesystem::getETag('');
-							\OCP\Config::setUserValue($user, 'files_sharing', 'etag', $etag);
 							// Look for reshares
 							$reshareUsers = array_merge($reshareUsers, \OCP\Share::getUsersItemShared('file', $params['fileSource'], $user, true));
 						}
